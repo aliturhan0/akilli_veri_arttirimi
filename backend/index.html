@@ -27,7 +27,7 @@
                 <a class="nav-item" data-panel="generate"><i class="fa-solid fa-atom"></i><span>Sentez Motoru</span></a>
                 <a class="nav-item" data-panel="analysis"><i class="fa-solid fa-chart-line"></i><span>Analiz</span></a>
                 <a class="nav-item" data-panel="simulation"><i class="fa-solid fa-car"></i><span>Simülasyon</span></a>
-                <a class="nav-item" data-panel="automation"><i class="fa-solid fa-bolt"></i><span>Otomasyon</span></a>
+
             </nav>
 
             <div class="sidebar-status">
@@ -111,7 +111,7 @@
                         <div class="glass-card">
                             <div class="card-title"><i class="fa-solid fa-clipboard-check"></i> Damıtma Raporu</div>
                             <div id="distill-report"><p style="color:var(--muted)">Henüz damıtma yapılmadı.</p></div>
-                            <a href="/api/download_distilled" class="btn-download hidden" id="dl-distilled" style="margin-top:14px" download="distilled_clean_data.csv"><i class="fa-solid fa-download"></i> Temiz Veriyi İndir</a>
+                            <a href="/api/download_distilled" class="btn-download hidden" id="dl-distilled" style="margin-top:14px" download="distilled_clean_data.csv" target="_blank"><i class="fa-solid fa-download"></i> Temiz Veriyi İndir</a>
                         </div>
                     </div>
                 </section>
@@ -154,7 +154,7 @@
                         <div class="glass-card"><div class="card-title"><i class="fa-solid fa-list-check"></i> Analiz Detayları</div><div class="detail-list" id="detail-list"><p style="color:var(--muted)">Henüz analiz yapılmadı.</p></div></div>
                     </div>
                     <div class="glass-card download-card hidden" id="dl-card">
-                        <a href="/api/download_generated" class="btn-download" download="sentetik_veri.csv"><i class="fa-solid fa-download"></i> Sentetik Veriyi İndir (CSV)</a>
+                        <a href="/api/download_generated" class="btn-download" download="sentetik_veri.csv" target="_blank"><i class="fa-solid fa-download"></i> Sentetik Veriyi İndir (CSV)</a>
                     </div>
                 </section>
 
@@ -181,21 +181,7 @@
                     </div>
                 </section>
 
-                <!-- PANEL: Automation -->
-                <section class="panel" id="panel-automation">
-                    <div class="panel-center">
-                        <div class="glass-card auto-card">
-                            <div class="auto-icon"><i class="fa-solid fa-rocket"></i></div>
-                            <h3>Tam Otomasyon</h3>
-                            <p>Tek tıkla: Waymo seed verisinden 5.000 sentetik anomali üret, modeli eğit, sonuçları raporla.</p>
-                            <button class="btn-action green" id="btn-auto"><i class="fa-solid fa-bolt"></i> TÜM SÜRECİ BAŞLAT</button>
-                            <div class="gen-progress hidden" id="auto-progress">
-                                <div class="progress-track"><div class="progress-thumb green" id="auto-thumb"></div></div>
-                                <span class="progress-text" id="auto-text">Başlatılıyor...</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+
 
             </main>
 
