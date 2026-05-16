@@ -1,9 +1,12 @@
 # 🚀 Akıllı Sentetik Veri Artırım Platformu - Kurulum Rehberi
 
-Bu rehber, projenin hem **macOS** hem de **Windows** sistemlerde sorunsuz bir şekilde kurulup çalıştırılmasını sağlamak için hazırlanmıştır. 
+Bu rehber, projenin hem **macOS** hem de **Windows** sistemlerde masaüstü uygulaması olarak kurulup çalıştırılmasını sağlamak için hazırlanmıştır.
 
 > [!WARNING]
-> **ÖNEMLİ (Git LFS):** Projede yer alan 700 MB'lık veri seti ve 120 MB'lık yapay zeka modeli (RCGAN) standart GitHub limitlerini aştığı için **Git LFS (Large File Storage)** kullanılarak yüklenmiştir. Projeyi klonlamadan önce mutlaka sisteminizde Git LFS'in kurulu olması gerekmektedir!
+> **ÖNEMLİ (Git LFS):** Projede yer alan büyük veri seti (`waymo_seed_MASSIVE.csv`) ve RCGAN model dosyası standart GitHub limitlerini aştığı için **Git LFS (Large File Storage)** ile tutulur. Projeyi klonlamadan önce sisteminizde Git LFS kurulu olmalıdır.
+
+> [!NOTE]
+> Önerilen Python sürümü: **Python 3.11**. Proje masaüstü pencereyi `main.py` ile açar; `backend/server.py` yalnızca geliştirme/opsiyonel web sunucusu olarak çalıştırılmalıdır.
 
 ---
 
@@ -22,6 +25,7 @@ Git LFS aktif edildikten sonra projeyi bilgisayarınıza indirin:
 ```bash
 git clone https://github.com/aliturhan0/akilli_veri_arttirimi.git
 cd akilli_veri_arttirimi
+git lfs pull
 ```
 
 ### 3. Sanal Ortam (Virtual Environment) Kurulumu
@@ -43,9 +47,11 @@ pip install -r requirements.txt
 
 ### 5. Sistemi Başlatma
 ```bash
-python backend/server.py
+python main.py
 ```
-Sunucu başladığında tarayıcınızdan **http://127.0.0.1:8000** adresine giderek platformu kullanabilirsiniz.
+Komut çalışınca uygulama yerel FastAPI sunucusunu arka planda başlatır ve masaüstü penceresini otomatik açar.
+
+> Geliştirme için yalnızca web sunucusunu açmak isterseniz `python backend/server.py` komutunu kullanabilir, ardından **http://127.0.0.1:8000** adresinden arayüze erişebilirsiniz.
 
 ---
 
@@ -64,6 +70,7 @@ CMD veya PowerShell üzerinden projenin inmesini istediğiniz klasöre gidip klo
 ```cmd
 git clone https://github.com/aliturhan0/akilli_veri_arttirimi.git
 cd akilli_veri_arttirimi
+git lfs pull
 ```
 
 ### 3. Sanal Ortam (Virtual Environment) Kurulumu
@@ -84,9 +91,11 @@ pip install -r requirements.txt
 
 ### 5. Sistemi Başlatma
 ```cmd
-python backend\server.py
+python main.py
 ```
-Sunucu başladığında tarayıcınızdan **http://127.0.0.1:8000** adresine giderek platformu kullanabilirsiniz.
+Komut çalışınca uygulama yerel FastAPI sunucusunu arka planda başlatır ve masaüstü penceresini otomatik açar.
+
+> Geliştirme için yalnızca web sunucusunu açmak isterseniz `python backend\server.py` komutunu kullanabilir, ardından **http://127.0.0.1:8000** adresinden arayüze erişebilirsiniz.
 
 ---
 
@@ -96,3 +105,7 @@ Sunucu başladığında tarayıcınızdan **http://127.0.0.1:8000** adresine gid
   * **Çözüm:** Bilgisayarınızda Git LFS kurulu değil veya aktif edilmemiş. `git lfs install` yaptıktan sonra proje klasörünün içinde `git lfs pull` komutunu çalıştırarak büyük dosyaların orijinal hallerini çekebilirsiniz.
 * **Hata:** `ModuleNotFoundError: No module named 'fastapi'` (veya benzeri)
   * **Çözüm:** Sanal ortamı (otonom_env) aktif etmeyi unutmuş olabilirsiniz. Adım 3'teki aktivasyon komutunu tekrar çalıştırın ve kütüphaneleri kurduğunuzdan emin olun.
+* **Hata:** Uygulama penceresi açılmıyor ama terminalde sunucu çalışıyor gibi görünüyor.
+  * **Çözüm:** `pywebview` kurulumu eksik olabilir. Sanal ortam aktifken `pip install -r requirements.txt` komutunu tekrar çalıştırın. Geçici olarak `python backend/server.py` ile web modunu açıp tarayıcıdan test edebilirsiniz.
+* **Hata:** `Address already in use` veya port 8000 kullanımda hatası alıyorum.
+  * **Çözüm:** Daha önce açık kalan uygulama penceresini/terminalini kapatın ve `python main.py` komutunu yeniden çalıştırın.

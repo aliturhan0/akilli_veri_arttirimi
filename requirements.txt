@@ -46,12 +46,12 @@ proxy-tools==0.1.0
 pydantic==2.13.4
 pydantic_core==2.46.4
 Pygments==2.20.0
-pyobjc-core==12.1
-pyobjc-framework-Cocoa==12.1
-pyobjc-framework-Quartz==12.1
-pyobjc-framework-Security==12.1
-pyobjc-framework-UniformTypeIdentifiers==12.1
-pyobjc-framework-WebKit==12.1
+pyobjc-core==12.1; sys_platform == "darwin"
+pyobjc-framework-Cocoa==12.1; sys_platform == "darwin"
+pyobjc-framework-Quartz==12.1; sys_platform == "darwin"
+pyobjc-framework-Security==12.1; sys_platform == "darwin"
+pyobjc-framework-UniformTypeIdentifiers==12.1; sys_platform == "darwin"
+pyobjc-framework-WebKit==12.1; sys_platform == "darwin"
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
 python-multipart==0.0.28
