@@ -50,7 +50,7 @@ print("=" * 60)
 # 1. VERİ YÜKLEME
 # ============================================================
 print("\n📂 Veriler yükleniyor...")
-seed_df = pd.read_csv(f'{OUTPUT_DIR}/waymo_seed.csv')
+seed_df = pd.read_csv('waymo_seed_MASSIVE.csv')
 gen_df = pd.read_csv(f'{OUTPUT_DIR}/waymo_rcgan_generated.csv')
 
 print(f"  📌 Waymo Seed: {seed_df.shape[0]:,} örnek, {seed_df.shape[1]} sütun")

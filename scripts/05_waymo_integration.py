@@ -212,8 +212,8 @@ cols = [f'x({i+1})' for i in range(20)] + [f'y({i+1})' for i in range(20)] + \
 
 df_waymo = pd.DataFrame(waymo_data, columns=cols)
 df_waymo['label'] = 'normal'
-df_waymo.to_csv('waymo_seed.csv', index=False)
-print(f"  ✨ BAŞARILI: waymo_seed.csv (Boyut: {df_waymo.shape}) üretildi!")
+df_waymo.to_csv('waymo_seed_MASSIVE.csv', index=False)
+print(f"  ✨ BAŞARILI: waymo_seed_MASSIVE.csv (Boyut: {df_waymo.shape}) üretildi!")
 
 # ============================================================
 # 2. WAYMO FEATURE ENGINEERING 

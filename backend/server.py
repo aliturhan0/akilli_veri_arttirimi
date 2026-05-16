@@ -34,15 +34,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-SEED_PATH = os.path.join(PROJECT_DIR, "waymo_seed.csv")
-SEED_FALLBACK_PATH = os.path.join(PROJECT_DIR, "waymo_seed_MASSIVE.csv")
+SEED_PATH = os.path.join(PROJECT_DIR, "waymo_seed_MASSIVE.csv")
+SEED_LEGACY_PATH = os.path.join(PROJECT_DIR, "waymo_seed.csv")
 MODEL_PATH = os.path.join(OUTPUT_DIR, "waymo_rcgan_GODMODE_A100_STABLE.pth")
 
 _seed_row_cache = {}
 
 def get_seed_path():
-    """Return the usable seed CSV, preferring the real repo file over stale symlinks."""
-    candidates = [SEED_PATH, SEED_FALLBACK_PATH]
+    """Return the usable seed CSV, preferring the real repo file over legacy symlinks."""
+    candidates = [SEED_PATH, SEED_LEGACY_PATH]
     for path in candidates:
         try:
             if os.path.isfile(path) and os.path.getsize(path) > 0 and count_csv_rows(path) > 0:
