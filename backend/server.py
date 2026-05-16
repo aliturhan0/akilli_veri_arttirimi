@@ -1013,13 +1013,13 @@ async def simulation_sample(request: Request):
 @app.get("/api/download_generated")
 async def download_generated():
     p=os.path.join(OUTPUT_DIR,"live_synthetic_output.csv")
-    if os.path.exists(p): return FileResponse(path=p,filename="sentetik_veri.csv")
+    if os.path.exists(p): return FileResponse(path=p, filename="sentetik_veri.csv", media_type="application/octet-stream")
     return JSONResponse(status_code=404,content={"detail":"Henüz veri üretilmedi."})
 
 @app.get("/api/download_distilled")
 async def download_distilled():
     p=os.path.join(OUTPUT_DIR,"distilled_data.csv")
-    if os.path.exists(p): return FileResponse(path=p,filename="distilled_clean_data.csv")
+    if os.path.exists(p): return FileResponse(path=p, filename="distilled_clean_data.csv", media_type="application/octet-stream")
     return JSONResponse(status_code=404,content={"detail":"Henüz damıtma yapılmadı."})
 
 app.mount("/", StaticFiles(directory=BASE_DIR, html=True), name="static")
