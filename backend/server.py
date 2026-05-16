@@ -35,7 +35,35 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 SEED_PATH = os.path.join(PROJECT_DIR, "waymo_seed.csv")
+SEED_FALLBACK_PATH = os.path.join(PROJECT_DIR, "waymo_seed_MASSIVE.csv")
 MODEL_PATH = os.path.join(OUTPUT_DIR, "waymo_rcgan_GODMODE_A100_STABLE.pth")
+
+_seed_row_cache = {}
+
+def get_seed_path():
+    """Return the usable seed CSV, preferring the real repo file over stale symlinks."""
+    candidates = [SEED_PATH, SEED_FALLBACK_PATH]
+    for path in candidates:
+        try:
+            if os.path.isfile(path) and os.path.getsize(path) > 0 and count_csv_rows(path) > 0:
+                return path
+        except OSError:
+            continue
+    return None
+
+def count_csv_rows(path):
+    if not path:
+        return 0
+    try:
+        stat = os.stat(path)
+        cache_key = (path, stat.st_mtime_ns, stat.st_size)
+        if cache_key not in _seed_row_cache:
+            _seed_row_cache.clear()
+            with open(path, "rb") as f:
+                _seed_row_cache[cache_key] = max(sum(1 for _ in f) - 1, 0)
+        return _seed_row_cache[cache_key]
+    except OSError:
+        return 0
 
 # ═══════════════ RCGAN GODMODE ═══════════════
 class RCGAN_Generator(nn.Module):
@@ -763,9 +791,11 @@ def evaluate(df_orig, df_gen, label_col, numeric_cols):
 # ═══════════════ API ═══════════════
 @app.get("/api/system_status")
 async def system_status():
-    se=os.path.exists(SEED_PATH)
+    seed_path = get_seed_path()
+    se = seed_path is not None
     return {"model_loaded":rcgan is not None,"model_name":os.path.basename(MODEL_PATH) if rcgan else "N/A",
-        "seed_available":se,"seed_rows":sum(1 for _ in open(SEED_PATH))-1 if se else 0,
+        "seed_available":se,"seed_rows":count_csv_rows(seed_path),
+        "seed_file":os.path.basename(seed_path) if seed_path else None,
         "status":"ready","mode":"adaptive+distillation"}
 
 @app.post("/api/distill")
@@ -959,21 +989,22 @@ async def run_full_automation(request: Request):
     except:
         n_samples = 2000
     
-    if not os.path.exists(SEED_PATH):
+    seed_path = get_seed_path()
+    if not seed_path:
         return JSONResponse(status_code=400, content={"detail":"Seed dosyası yok."})
     
     # 700K'lık devasa dosyadan rastgele 10.000 satır seçerek al
     # Tüm dosyayı RAM'e almamak için skiprows olasılık hesabı kullanıyoruz
-    total_rows = sum(1 for _ in open(SEED_PATH)) - 1
+    total_rows = count_csv_rows(seed_path)
     sample_size = 10000
     
     if total_rows > sample_size:
         prob = sample_size / total_rows
-        df = pd.read_csv(SEED_PATH, skiprows=lambda i: i > 0 and random.random() > prob)
+        df = pd.read_csv(seed_path, skiprows=lambda i: i > 0 and random.random() > prob)
         if len(df) > sample_size:
             df = df.sample(sample_size).reset_index(drop=True)
     else:
-        df = pd.read_csv(SEED_PATH)
+        df = pd.read_csv(seed_path)
         
     df_clean, report, label_col, numeric_cols = distill_dataset(df)
     

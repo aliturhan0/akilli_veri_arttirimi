@@ -7,6 +7,40 @@ document.addEventListener('DOMContentLoaded', () => {
     $('dl-distilled').href = API + '/api/download_distilled';
     document.querySelector('#dl-card .btn-download').href = API + '/api/download_generated';
 
+    function getDesktopApi() {
+        return window.pywebview && window.pywebview.api ? window.pywebview.api : null;
+    }
+
+    async function saveCsvViaDesktop(kind) {
+        const method = kind === 'distilled' ? 'save_distilled_csv' : 'save_generated_csv';
+        const desktopApi = getDesktopApi();
+        if (!desktopApi || !desktopApi[method]) {
+            log('Masaüstü kaydetme servisi hazır değil. Uygulamayı main.py ile açın.', 'err');
+            return false;
+        }
+
+        const result = await desktopApi[method]();
+        if (result && result.ok) {
+            log('CSV kaydedildi: ' + result.path, 'ok');
+        } else if (result && !result.cancelled) {
+            log(result.message || 'CSV kaydedilemedi.', 'err');
+        }
+        return true;
+    }
+
+    $('dl-distilled').addEventListener('click', async e => {
+        if (getDesktopApi()) {
+            e.preventDefault();
+            await saveCsvViaDesktop('distilled');
+        }
+    });
+    document.querySelector('#dl-card .btn-download').addEventListener('click', async e => {
+        if (getDesktopApi()) {
+            e.preventDefault();
+            await saveCsvViaDesktop('generated');
+        }
+    });
+
     // === NAV ===
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -295,7 +329,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === AUTOMATION ===
-    $('btn-auto').addEventListener('click',async()=>{
+    const btnAuto = $('btn-auto');
+    if(btnAuto) btnAuto.addEventListener('click',async()=>{
         const btn=$('btn-auto');btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> İşleniyor...';
         $('auto-progress').classList.remove('hidden');
         const nSamples=parseInt($('n-samples').value)||2000;
