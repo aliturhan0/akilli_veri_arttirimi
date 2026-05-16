@@ -654,28 +654,39 @@ def _score_from_corr(value):
 def _distribution_shift_report(fidelity):
     details = fidelity.get("column_details", []) if isinstance(fidelity, dict) else []
     warnings = []
-    diffs = []
+    smds = []
+    mean_diffs = []
     for item in details:
-        diff = float(item.get("mean_diff_pct", 0) or 0)
-        diffs.append(diff)
-        if diff >= 30:
+        mean_diff = float(item.get("mean_diff_pct", 0) or 0)
+        smd = float(item.get("standardized_mean_diff", 0) or 0)
+        mean_diffs.append(mean_diff)
+        smds.append(smd)
+
+        if smd >= 0.5:
             severity = "kritik"
-        elif diff >= 15:
+        elif smd >= 0.25:
             severity = "uyarı"
         else:
             continue
+
         warnings.append({
             "column": item.get("column"),
-            "mean_diff_pct": round(diff, 1),
+            "mean_diff_pct": round(mean_diff, 1),
+            "standardized_mean_diff": round(smd, 3),
             "severity": severity,
-            "detail": f"{item.get('column')} ortalaması sentetik veride %{round(diff,1)} kaydı."
+            "detail": f"{item.get('column')} ortalaması {round(smd,3)} standart sapma kaydı."
         })
-    avg_shift = float(np.mean(diffs)) if diffs else 0.0
-    max_shift = float(np.max(diffs)) if diffs else 0.0
-    # Ortalama fark %0 ise 100, %25+ ise zayıf kabul edilir.
-    score = round(max(0.0, 100.0 - min(avg_shift, 25.0) * 4.0), 1)
-    return {"score": score, "avg_mean_shift_pct": round(avg_shift, 1),
-            "max_mean_shift_pct": round(max_shift, 1), "warnings": warnings}
+    avg_smd = float(np.mean(smds)) if smds else 0.0
+    max_smd = float(np.max(smds)) if smds else 0.0
+    avg_mean_shift = float(np.mean(mean_diffs)) if mean_diffs else 0.0
+    max_mean_shift = float(np.max(mean_diffs)) if mean_diffs else 0.0
+    # Sıfır merkezli sensörlerde yüzde fark yanıltır; skor Cohen's d/SMD üstünden verilir.
+    # 0.1 küçük, 0.25 orta uyarı, 0.5+ ciddi dağılım kayması kabul edilir.
+    score = round(max(0.0, 100.0 - min(avg_smd, 0.75) * (100.0 / 0.75)), 1)
+    return {"score": score, "avg_standardized_mean_diff": round(avg_smd, 3),
+            "max_standardized_mean_diff": round(max_smd, 3),
+            "avg_mean_shift_pct": round(avg_mean_shift, 1),
+            "max_mean_shift_pct": round(max_mean_shift, 1), "warnings": warnings}
 
 def _physical_consistency_report(df_gen):
     waymo_cols = [f'{c}({i+1})' for c in ['x','y','speed','vx','vy'] for i in range(20)]
@@ -889,13 +900,16 @@ def evaluate(df_orig, df_gen, label_col, numeric_cols):
             # 3. Sütun detayları (ilk 10)
             col_details = []
             for j, col in enumerate(gc[:10]):
+                pooled_std = float(np.sqrt((orig_stds[j] ** 2 + gen_stds[j] ** 2) / 2.0)) + 1e-8
+                mean_diff_abs = abs(float(orig_means[j]) - float(gen_means[j]))
                 col_details.append({
                     "column": col,
                     "orig_mean": round(float(orig_means[j]), 4),
                     "gen_mean": round(float(gen_means[j]), 4),
                     "orig_std": round(float(orig_stds[j]), 4),
                     "gen_std": round(float(gen_stds[j]), 4),
-                    "mean_diff_pct": round(abs(float(orig_means[j]) - float(gen_means[j])) / (abs(float(orig_means[j])) + 1e-8) * 100, 1)
+                    "mean_diff_pct": round(mean_diff_abs / (abs(float(orig_means[j])) + 1e-8) * 100, 1),
+                    "standardized_mean_diff": round(mean_diff_abs / pooled_std, 4)
                 })
             
             fidelity = {
