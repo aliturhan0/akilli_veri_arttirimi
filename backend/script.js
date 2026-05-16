@@ -239,6 +239,35 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        if(d.quality_report){
+            const qr=d.quality_report;
+            const hdrQ=document.createElement('div');hdrQ.className='detail-row';
+            hdrQ.innerHTML='<span class="label" style="color:var(--cyan);font-weight:700">── Kalite Skoru ──</span><span class="val">'+qr.overall_score+'/100 ('+qr.grade+')</span>';
+            dl.appendChild(hdrQ);
+            [['Yönlendirme',qr.routing_explanation],
+             ['Fidelity Skoru',qr.components?.fidelity?.score!=null?qr.components.fidelity.score+'/100':'Uygulanamaz'],
+             ['Utility Skoru',qr.components?.utility?.score!=null?qr.components.utility.score+'/100':'Uygulanamaz'],
+             ['Dağılım Skoru',qr.components?.distribution?.score!=null?qr.components.distribution.score+'/100':'Uygulanamaz'],
+             ['Fizik Skoru',qr.components?.physical?.score!=null?qr.components.physical.score+'/100':'Uygulanamaz']
+            ].forEach(([l,v])=>{
+                const r=document.createElement('div');r.className='detail-row';
+                r.innerHTML=`<span class="label">${l}</span><span class="val">${v}</span>`;
+                dl.appendChild(r);
+            });
+            if(qr.distribution_shift && qr.distribution_shift.warnings && qr.distribution_shift.warnings.length){
+                qr.distribution_shift.warnings.slice(0,4).forEach(w=>{
+                    const r=document.createElement('div');r.className='detail-row';
+                    r.innerHTML=`<span class="label" style="color:var(--amber)">Dağılım Uyarısı</span><span class="val">${w.detail}</span>`;
+                    dl.appendChild(r);
+                });
+            }
+            if(qr.scientific_basis){
+                const r=document.createElement('div');r.className='detail-row';
+                r.innerHTML='<span class="label">Bilimsel Temel</span><span class="val">Fidelity + Utility + Distribution Shift + Fiziksel Tutarlılık</span>';
+                dl.appendChild(r);
+            }
+        }
+
         // Distillation report in details
         if(d.distillation && d.distillation.steps){
             const hdr=document.createElement('div');hdr.className='detail-row';
@@ -273,10 +302,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let f1_target_str = d.utility.f1_target_met ? '✅ Başarılı' : '❌ Başarısız';
             let recall_target_str = d.utility.recall_target_met ? '✅ Başarılı' : '❌ Başarısız';
+            const pct=v=>Number.isFinite(v)?(v*100).toFixed(1)+'%':'Uygulanamaz';
             
             [['Azınlık Sınıfı', d.utility.minority_class || '-'],
-             ['Azınlık Recall (Seed)', (d.utility.minority_recall_seed*100).toFixed(1)+'%'],
-             ['Azınlık Recall (Aug)', (d.utility.minority_recall_augmented*100).toFixed(1)+'%'],
+             ['Azınlık Recall (Seed)', pct(d.utility.minority_recall_seed)],
+             ['Azınlık Recall (Aug)', pct(d.utility.minority_recall_augmented)],
              ['Hedef: F1 > %15 Artış', f1_target_str],
              ['Hedef: Recall > %80', recall_target_str]
             ].forEach(([l,v])=>{

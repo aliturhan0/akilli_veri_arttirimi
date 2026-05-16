@@ -645,6 +645,151 @@ def generate_waymo(df, n_samples):
     dg.to_csv(os.path.join(OUTPUT_DIR,"live_synthetic_output.csv"),index=False)
     return dg
 
+def _score_from_corr(value):
+    try:
+        return round(max(0.0, min(1.0, float(value))) * 100, 1)
+    except:
+        return 0.0
+
+def _distribution_shift_report(fidelity):
+    details = fidelity.get("column_details", []) if isinstance(fidelity, dict) else []
+    warnings = []
+    diffs = []
+    for item in details:
+        diff = float(item.get("mean_diff_pct", 0) or 0)
+        diffs.append(diff)
+        if diff >= 30:
+            severity = "kritik"
+        elif diff >= 15:
+            severity = "uyarı"
+        else:
+            continue
+        warnings.append({
+            "column": item.get("column"),
+            "mean_diff_pct": round(diff, 1),
+            "severity": severity,
+            "detail": f"{item.get('column')} ortalaması sentetik veride %{round(diff,1)} kaydı."
+        })
+    avg_shift = float(np.mean(diffs)) if diffs else 0.0
+    max_shift = float(np.max(diffs)) if diffs else 0.0
+    # Ortalama fark %0 ise 100, %25+ ise zayıf kabul edilir.
+    score = round(max(0.0, 100.0 - min(avg_shift, 25.0) * 4.0), 1)
+    return {"score": score, "avg_mean_shift_pct": round(avg_shift, 1),
+            "max_mean_shift_pct": round(max_shift, 1), "warnings": warnings}
+
+def _physical_consistency_report(df_gen):
+    waymo_cols = [f'{c}({i+1})' for c in ['x','y','speed','vx','vy'] for i in range(20)]
+    if df_gen.empty or not all(c in df_gen.columns for c in waymo_cols):
+        return {"applicable": False, "score": None, "detail": "Waymo/trajectory kolonları yok; fizik skoru uygulanmadı."}
+    
+    speed = df_gen[[f'speed({i+1})' for i in range(20)]].to_numpy(dtype=float)
+    vx = df_gen[[f'vx({i+1})' for i in range(20)]].to_numpy(dtype=float)
+    vy = df_gen[[f'vy({i+1})' for i in range(20)]].to_numpy(dtype=float)
+    x = df_gen[[f'x({i+1})' for i in range(20)]].to_numpy(dtype=float)
+    y = df_gen[[f'y({i+1})' for i in range(20)]].to_numpy(dtype=float)
+    
+    finite_ratio = float(np.isfinite(speed).mean() * np.isfinite(vx).mean() * np.isfinite(vy).mean())
+    negative_speed_ratio = float((speed < -1e-6).mean())
+    high_speed_ratio = float((speed > 60).mean())
+    accel = np.diff(speed, axis=1) / 0.1
+    high_accel_ratio = float((np.abs(accel) > 12).mean()) if accel.size else 0.0
+    lateral_step = np.sqrt(np.diff(x, axis=1)**2 + np.diff(y, axis=1)**2)
+    jump_ratio = float((lateral_step > 8).mean()) if lateral_step.size else 0.0
+    vel_mag = np.sqrt(vx**2 + vy**2)
+    coherence_error = np.abs(vel_mag - speed) / (np.abs(speed) + 1.0)
+    coherence_penalty = float(np.clip(np.nanmean(coherence_error), 0, 1))
+    
+    score = 100.0
+    score -= negative_speed_ratio * 100
+    score -= high_speed_ratio * 80
+    score -= high_accel_ratio * 70
+    score -= jump_ratio * 70
+    score -= coherence_penalty * 20
+    score *= finite_ratio
+    score = round(max(0.0, min(100.0, score)), 1)
+    
+    issues = []
+    if negative_speed_ratio > 0: issues.append("Negatif hız tespit edildi.")
+    if high_speed_ratio > 0: issues.append("60 m/s üzeri hız tespit edildi.")
+    if high_accel_ratio > 0.02: issues.append("Yüksek ivme oranı arttı.")
+    if jump_ratio > 0.02: issues.append("Yörüngede ani konum sıçraması var.")
+    if coherence_penalty > 0.25: issues.append("speed ile vx/vy büyüklüğü arasında uyumsuzluk var.")
+    
+    return {
+        "applicable": True,
+        "score": score,
+        "negative_speed_ratio": round(negative_speed_ratio, 4),
+        "high_speed_ratio": round(high_speed_ratio, 4),
+        "high_accel_ratio": round(high_accel_ratio, 4),
+        "jump_ratio": round(jump_ratio, 4),
+        "velocity_coherence_error": round(coherence_penalty, 4),
+        "issues": issues,
+        "formula": "100 - negatif hız, aşırı hız, |ivme|>12 m/s², ani konum sıçraması ve speed-vx/vy uyumsuzluğu cezaları"
+    }
+
+def build_quality_report(df_orig, df_gen, method, is_waymo, scores, label_col, numeric_cols):
+    fidelity = scores.get("fidelity", {}) or {}
+    utility = scores.get("utility", {}) or {}
+    fidelity_score = round((_score_from_corr(fidelity.get("cosine_similarity", 0)) +
+                            _score_from_corr(fidelity.get("column_correlation", 0))) / 2, 1)
+    shift = _distribution_shift_report(fidelity)
+    physical = _physical_consistency_report(df_gen)
+    
+    utility_applicable = utility.get("evaluable", True) is not False and scores.get("seed_f1", 0) > 0
+    if utility_applicable:
+        aug_f1 = float(scores.get("augmented_f1", 0) or 0)
+        improvement = max(0.0, float(scores.get("improvement", 0) or 0))
+        recall_aug = float(utility.get("minority_recall_augmented", utility.get("minority_recall", 0)) or 0)
+        utility_score = round((aug_f1 * 55) + (min(improvement / 15.0, 1.0) * 25) + (recall_aug * 20), 1)
+    else:
+        utility_score = None
+    
+    components = {}
+    fidelity_applicable = bool(fidelity.get("column_details")) or fidelity.get("cosine_similarity", 0) > 0 or fidelity.get("column_correlation", 0) > 0
+    if fidelity_applicable:
+        components["fidelity"] = {"score": fidelity_score, "weight": 0.35 if method != "rcgan" else 0.30}
+    else:
+        components["fidelity"] = {"score": None, "weight": 0, "applicable": False}
+    
+    distribution_applicable = bool(shift.get("warnings")) or bool(fidelity.get("column_details"))
+    if distribution_applicable:
+        components["distribution"] = {"score": shift["score"], "weight": 0.25 if method != "rcgan" else 0.10}
+    else:
+        components["distribution"] = {"score": None, "weight": 0, "applicable": False}
+    
+    if utility_score is not None:
+        components["utility"] = {"score": utility_score, "weight": 0.35 if method != "rcgan" else 0.25}
+    else:
+        components["utility"] = {"score": None, "weight": 0, "applicable": False}
+    if physical["applicable"]:
+        components["physical"] = {"score": physical["score"], "weight": 0.35 if method == "rcgan" else 0.15}
+    
+    total_weight = sum(v["weight"] for v in components.values())
+    overall = round(sum((v["score"] or 0) * v["weight"] for v in components.values()) / max(total_weight, 1e-8), 1) if total_weight > 0 else 0
+    
+    if method == "rcgan":
+        routing = "RCGAN seçildi: veri Waymo formatında veya otonom araç/yörünge kolonlarından 20 adımlı trajektöre dönüştürülebildi."
+    elif method == "ctgan":
+        routing = "CTGAN seçildi: veri genel tabular/sensör formatında ve çok sütunlu dağılım korunmalı."
+    else:
+        routing = "SMOTE+Gaussian seçildi: veri CTGAN için küçük/uygunsuz veya CTGAN başarısız oldu."
+    
+    return {
+        "overall_score": overall,
+        "grade": "A" if overall >= 90 else "B" if overall >= 80 else "C" if overall >= 70 else "D",
+        "method": method,
+        "routing_explanation": routing,
+        "components": components,
+        "distribution_shift": shift,
+        "physical_consistency": physical,
+        "scientific_basis": [
+            "Fidelity: orijinal ve sentetik verinin ortalama vektör cosine benzerliği ile kolon ortalama/std korelasyonlarının birleşimi.",
+            "Utility: aynı test ayrımı üzerinde Seed F1, Augmented F1, F1 iyileşmesi ve azınlık sınıfı recall değişimi.",
+            "Distribution shift: kolon bazlı orijinal-sentetik ortalama fark yüzdesi; %15 uyarı, %30 kritik eşik.",
+            "Physical consistency: RCGAN yörüngelerinde hız pozitifliği, hız sınırı, ivme, konum sıçraması ve speed-vx/vy uyumu."
+        ]
+    }
+
 # ═══════════════ EVALUATION (Fidelity + Utility) ═══════════════
 def evaluate(df_orig, df_gen, label_col, numeric_cols):
     """
@@ -972,6 +1117,7 @@ async def evaluate_pipeline(file: UploadFile = File(...), n_samples: int = Form(
         
         # 3. Değerlendir
         scores = evaluate(df_clean, df_gen, label_col, numeric_cols)
+        quality_report = build_quality_report(df_clean, df_gen, method, is_waymo, scores, label_col, numeric_cols)
         
         safe_rows = max(report.get("clean_rows", 1), 1)
         res = {
@@ -986,6 +1132,7 @@ async def evaluate_pipeline(file: UploadFile = File(...), n_samples: int = Form(
             "seed_count":report.get("clean_rows", 0),"gen_count":len(df_gen),
             "multiplication_factor":round((report.get("clean_rows", 0)+len(df_gen))/safe_rows,2),
             "generative_coverage":round(len(df_gen)/(safe_rows)*100,1),
+            "quality_report": quality_report,
             **scores,
         }
         
@@ -1042,10 +1189,12 @@ async def run_full_automation(request: Request):
         return JSONResponse(status_code=500, content={"detail":"Üretim başarısız."})
     
     scores = evaluate(df_clean, df_gen, label_col, numeric_cols)
+    quality_report = build_quality_report(df_clean, df_gen, method, is_waymo, scores, label_col, numeric_cols)
     return {"status":"success","mode":"full_automation","method":method,"distillation":report,
         "seed_count":report["clean_rows"],"gen_count":len(df_gen),
         "multiplication_factor":round((report["clean_rows"]+len(df_gen))/report["clean_rows"],2),
-        "generative_coverage":round(len(df_gen)/(report["clean_rows"]+1)*100,1),**scores}
+        "generative_coverage":round(len(df_gen)/(report["clean_rows"]+1)*100,1),
+        "quality_report": quality_report, **scores}
 
 @app.post("/api/simulation_sample")
 async def simulation_sample(request: Request):
