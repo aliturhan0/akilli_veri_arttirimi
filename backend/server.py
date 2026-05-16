@@ -3,6 +3,16 @@ Sentetik Veri Üretim Hattı — Adaptive Akıllı Veri Artırım Platformu
 Bilgi Damıtma + RCGAN/CTGAN/SMOTE Sentetik Üretim
 """
 import os, io, random, json, traceback
+
+# [CRITICAL FIX] Import ctgan BEFORE torch to prevent macOS OpenMP/Accelerate deadlock
+try:
+    from ctgan import CTGAN
+    CTGAN_AVAILABLE = True
+    print('[✅] CTGAN modülü yüklendi')
+except ImportError:
+    CTGAN_AVAILABLE = False
+    print('[⚠️] CTGAN yok, SMOTE fallback kullanılacak')
+
 import torch, torch.nn as nn
 from fastapi import FastAPI, UploadFile, File, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,13 +25,6 @@ from sklearn.metrics import f1_score, recall_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial.distance import cdist
-try:
-    from ctgan import CTGAN
-    CTGAN_AVAILABLE = True
-    print('[✅] CTGAN modülü yüklendi')
-except ImportError:
-    CTGAN_AVAILABLE = False
-    print('[⚠️] CTGAN yok, SMOTE fallback kullanılacak')
 from collections import Counter
 
 app = FastAPI(title="Sentetik Veri Üretim Hattı")
