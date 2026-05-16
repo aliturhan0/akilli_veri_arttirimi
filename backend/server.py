@@ -115,26 +115,13 @@ def distill_dataset(df):
         "detail": f"{dup_removed} birebir kopya satır silindi"
     })
     
-    # Yakın-duplikatlar (sadece veri 10K'dan azsa, yoksa çok yavaş)
+    # Yakın-duplikatlar: cosine benzerliği tabular sensör verilerinde aşırı agresif
+    # davranabiliyor. Sadece ölçüm hassasiyeti kaynaklı kopyaları temizle.
     near_dup = 0
     if len(df) < 10000 and len(numeric_cols) > 0:
-        X = df[numeric_cols].values.astype(np.float32)
-        X = np.nan_to_num(X)
-        # Normalize edip cosine similarity
-        norms = np.linalg.norm(X, axis=1, keepdims=True) + 1e-8
-        X_norm = X / norms
-        # Batch halinde yakın duplikatları bul
-        keep = np.ones(len(X_norm), dtype=bool)
-        for i in range(0, len(X_norm), 500):
-            batch = X_norm[i:i+500]
-            sims = batch @ X_norm.T  # cosine similarity
-            for j in range(len(batch)):
-                if not keep[i+j]:
-                    continue
-                # Bu satıra çok benzeyen sonraki satırları işaretle
-                high_sim = np.where((sims[j] > 0.9999) & (np.arange(len(X_norm)) > i+j))[0]
-                keep[high_sim] = False
-        near_dup = np.sum(~keep)
+        rounded_numeric = df[numeric_cols].round(4)
+        keep = ~rounded_numeric.duplicated(keep='first')
+        near_dup = int((~keep).sum())
         if near_dup > 0:
             df = df.iloc[keep].reset_index(drop=True)
     
@@ -659,8 +646,10 @@ def evaluate(df_orig, df_gen, label_col, numeric_cols):
     
     if len(np.unique(y)) < 2:
         return {"seed_f1": 0, "augmented_f1": 0, "improvement": 0,
+                "analysis_note": "Utility metrikleri için en az iki sınıf gerekir; bu veri tek sınıflı.",
                 "fidelity": {"cosine_similarity": 0, "column_correlation": 0},
-                "utility": {"minority_recall": 0, "f1_target_met": False, "recall_target_met": False}}
+                "utility": {"evaluable": False, "class_count": int(len(np.unique(y))),
+                            "minority_recall": 0, "f1_target_met": False, "recall_target_met": False}}
     
     # ══ SEED MODEL (Orijinal veriyle) ══
     Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)

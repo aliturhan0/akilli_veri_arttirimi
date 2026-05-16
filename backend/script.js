@@ -221,6 +221,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Details
         const dl=$('detail-list'); dl.innerHTML='';
+        if(d.analysis_note){
+            const r=document.createElement('div');r.className='detail-row';
+            r.innerHTML=`<span class="label" style="color:var(--amber);font-weight:700">Analiz Notu</span><span class="val">${d.analysis_note}</span>`;
+            dl.appendChild(r);
+        }
         if(d.dataset_info){
             const di=d.dataset_info;
             [['Satır (temiz)',d.seed_count.toLocaleString()],['Özellik',di.features],['Sınıf',di.classes],
