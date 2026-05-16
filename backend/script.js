@@ -299,37 +299,142 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === SIMULATION ===
     const simC=$('simCanvas'),sctx=simC.getContext('2d');let simOn=false;
+    const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+    const median=arr=>{const a=arr.filter(Number.isFinite).slice().sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:0};
     function rsc(){const p=simC.parentElement;simC.width=p.clientWidth;simC.height=p.clientHeight}
     window.addEventListener('resize',rsc);rsc();
 
+    $('sim-severity').addEventListener('input',e=>$('sim-severity-val').textContent=parseFloat(e.target.value).toFixed(2)+'x');
+
     $('btn-sim').addEventListener('click',async()=>{
-        if(simOn)return;const t=$('sim-type').value;log('Simülasyon: '+t.toUpperCase());
-        try{const r=await fetch(API+'/api/simulation_sample',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:t})});if(!r.ok)throw new Error('Veri yok');runSim(await r.json())}catch(e){log(e.message,'err')}
+        if(simOn)return;
+        const t=$('sim-type').value;
+        const severity=parseFloat($('sim-severity').value)||1;
+        log('Simülasyon: '+t.toUpperCase()+' | şiddet '+severity.toFixed(2)+'x');
+        try{
+            const r=await fetch(API+'/api/simulation_sample',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:t})});
+            if(!r.ok)throw new Error('Önce RCGAN sentetik veri üretin');
+            runSim(await r.json(),severity);
+        }catch(e){log(e.message,'err')}
     });
 
-    function runSim(data){
-        simOn=true;$('btn-sim').disabled=true;let f=0;const tot=data.x.length;let ro=0;
+    function makeReference(data){
+        const n=data.x.length;
+        const dx=[],dy=[],ds=[];
+        for(let i=1;i<n;i++){
+            dx.push(data.x[i]-data.x[i-1]);
+            dy.push(data.y[i]-data.y[i-1]);
+            ds.push(data.speed[i]);
+        }
+        const mx=median(dx),my=median(dy),ms=Math.max(.1,median(ds));
+        const ref={x:[],y:[],speed:[],vx:[],vy:[]};
+        for(let i=0;i<n;i++){
+            ref.x.push(data.x[0]+mx*i);
+            ref.y.push(data.y[0]+my*i);
+            ref.speed.push(ms);
+            ref.vx.push(mx/.1);
+            ref.vy.push(my/.1);
+        }
+        return ref;
+    }
+
+    function applySeverity(data,ref,severity){
+        const n=data.x.length,sim={x:[],y:[],speed:[],vx:[],vy:[],type:data.type};
+        for(let i=0;i<n;i++){
+            sim.x.push(ref.x[i]+(data.x[i]-ref.x[i])*severity);
+            sim.y.push(ref.y[i]+(data.y[i]-ref.y[i])*severity);
+            sim.speed.push(clamp(ref.speed[i]+(data.speed[i]-ref.speed[i])*severity,0,80));
+            sim.vx.push(clamp(ref.vx[i]+(data.vx[i]-ref.vx[i])*severity,-35,35));
+            sim.vy.push(clamp(ref.vy[i]+(data.vy[i]-ref.vy[i])*severity,-35,35));
+        }
+        return sim;
+    }
+
+    function calcFrame(sim,ref,i){
+        const sp=sim.speed[i];
+        const accel=i>0?(sim.speed[i]-sim.speed[i-1])/.1:0;
+        const offset=Math.hypot(sim.x[i]-ref.x[i],sim.y[i]-ref.y[i]);
+        const jerk=i>1?Math.abs(((sim.speed[i]-sim.speed[i-1])-(sim.speed[i-1]-sim.speed[i-2]))/.01):0;
+        const consistencyPenalty=(sp<0?30:0)+(Math.abs(accel)>16?25:0)+(jerk>180?15:0)+(offset>7?20:0);
+        const risk=clamp(offset*9+Math.abs(accel)*3+(sp<.4?18:0)+(jerk>120?10:0),0,100);
+        return {sp,accel,offset,jerk,risk,phys:clamp(100-consistencyPenalty,0,100),ano:risk>45||offset>3.5||Math.abs(accel)>10||sp<.4};
+    }
+
+    function drawRoad(ro,mid){
+        const w=simC.width,h=simC.height;
+        const grd=sctx.createLinearGradient(0,0,0,h);
+        grd.addColorStop(0,'#0b1220');grd.addColorStop(.5,'#080c14');grd.addColorStop(1,'#050812');
+        sctx.fillStyle=grd;sctx.fillRect(0,0,w,h);
+        sctx.fillStyle='rgba(255,255,255,.025)';
+        sctx.fillRect(0,mid-132,w,264);
+        sctx.strokeStyle='rgba(148,163,184,.16)';sctx.lineWidth=2;
+        [mid-132,mid+132].forEach(y=>{sctx.beginPath();sctx.moveTo(0,y);sctx.lineTo(w,y);sctx.stroke()});
+        sctx.setLineDash([18,26]);sctx.lineWidth=1;sctx.strokeStyle='rgba(226,232,240,.18)';
+        [mid-44,mid+44].forEach(y=>{sctx.beginPath();sctx.lineDashOffset=ro;sctx.moveTo(0,y);sctx.lineTo(w,y);sctx.stroke()});
+        sctx.setLineDash([]);
+    }
+
+    function drawPath(points,color,lineWidth=2,dashed=false){
+        if(points.length<2)return;
+        sctx.save();
+        sctx.strokeStyle=color;sctx.lineWidth=lineWidth;
+        if(dashed)sctx.setLineDash([9,9]);
+        sctx.beginPath();
+        points.forEach((p,i)=>i?sctx.lineTo(p.x,p.y):sctx.moveTo(p.x,p.y));
+        sctx.stroke();
+        sctx.restore();
+    }
+
+    function drawCar(x,y,angle,color,ghost=false){
+        sctx.save();sctx.translate(x,y);sctx.rotate(angle);
+        sctx.globalAlpha=ghost ? .45 : 1;
+        sctx.shadowBlur=ghost?0:22;sctx.shadowColor=color;
+        sctx.fillStyle=color;sctx.beginPath();sctx.roundRect(-24,-12,48,24,6);sctx.fill();
+        sctx.fillStyle=ghost?'#101827':'#060914';sctx.fillRect(5,-9,11,18);
+        sctx.fillStyle='#fbbf24';sctx.fillRect(21,-10,3,5);sctx.fillRect(21,5,3,5);
+        sctx.restore();sctx.globalAlpha=1;sctx.shadowBlur=0;
+    }
+
+    function runSim(data,severity){
+        simOn=true;$('btn-sim').disabled=true;let f=0,ro=0;
+        const ref=makeReference(data),sim=applySeverity(data,ref,severity),tot=sim.x.length;
         const tc={spike:'#ef4444',drift:'#f59e0b',freeze:'#22d3ee',dropout:'#8b5cf6',noise:'#ec4899'};
         const ac=tc[data.type]||'#ef4444';
+        const trail=[],refTrail=[],frames=[];
         (function draw(){
-            if(f>=tot){simOn=false;$('btn-sim').disabled=false;$('s-status').textContent='FIN';$('s-status').style.color='var(--green)';return}
-            const sp=data.speed[f],cy=data.y[f]-data.y[0],ax=f>0?(data.speed[f]-data.speed[f-1])/.1:0;
-            const ano=Math.abs(ax)>10||Math.abs(cy)>5||sp<.1;
-            sctx.fillStyle='#080c14';sctx.fillRect(0,0,simC.width,simC.height);
-            ro-=sp*.5;sctx.strokeStyle='rgba(99,102,241,.08)';sctx.setLineDash([18,24]);sctx.lineWidth=1;
-            const mid=simC.height/2;
-            [-130,0,130].forEach(o=>{sctx.beginPath();sctx.lineDashOffset=ro;sctx.moveTo(0,mid+o);sctx.lineTo(simC.width,mid+o);sctx.stroke()});
-            sctx.setLineDash([]);
-            if(ano){sctx.fillStyle=ac+'12';sctx.fillRect(0,0,simC.width,simC.height);$('s-status').textContent='⚠ ANOMALİ';$('s-status').style.color=ac}
-            else{$('s-status').textContent='NORMAL';$('s-status').style.color='var(--green)'}
-            if(f>2){sctx.beginPath();sctx.strokeStyle=ano?ac+'50':'rgba(99,102,241,.15)';sctx.lineWidth=2;for(let i=Math.max(0,f-10);i<=f;i++){const tx=simC.width/4,ty=mid+(data.y[i]-data.y[0])*30;i===Math.max(0,f-10)?sctx.moveTo(tx-(f-i)*14,ty):sctx.lineTo(tx-(f-i)*14,ty)}sctx.stroke()}
-            const cx=simC.width/4,ccy=mid+cy*30,ag=Math.atan2(data.vy[f],data.vx[f]+1e-8);
-            sctx.save();sctx.translate(cx,ccy);sctx.rotate(ag);sctx.shadowBlur=20;sctx.shadowColor=ano?ac:'#6366f1';
-            sctx.fillStyle=ano?ac:'#e2e8f0';sctx.beginPath();sctx.roundRect(-22,-11,44,22,5);sctx.fill();
-            sctx.fillStyle='#080c14';sctx.fillRect(6,-9,9,18);sctx.fillStyle='#fbbf24';sctx.fillRect(20,-10,3,5);sctx.fillRect(20,5,3,5);
-            sctx.restore();sctx.shadowBlur=0;
-            $('s-speed').textContent=sp.toFixed(1);$('s-accel').textContent=ax.toFixed(1);$('s-offset').textContent=cy.toFixed(2);
-            f++;setTimeout(()=>requestAnimationFrame(draw),55);
+            if(f>=tot){
+                simOn=false;$('btn-sim').disabled=false;$('s-status').textContent='BİTTİ';$('s-status').style.color='var(--green)';
+                const maxOffset=Math.max(...frames.map(m=>m.offset),0),maxAccel=Math.max(...frames.map(m=>Math.abs(m.accel)),0);
+                const avgSpeed=frames.reduce((a,m)=>a+m.sp,0)/(frames.length||1),anoTime=frames.filter(m=>m.ano).length*.1;
+                const avgPhys=frames.reduce((a,m)=>a+m.phys,0)/(frames.length||1),avgRisk=frames.reduce((a,m)=>a+m.risk,0)/(frames.length||1);
+                $('r-max-offset').textContent=maxOffset.toFixed(2)+' m';
+                $('r-max-accel').textContent=maxAccel.toFixed(2)+' m/s²';
+                $('r-avg-speed').textContent=avgSpeed.toFixed(2)+' m/s';
+                $('r-ano-time').textContent=anoTime.toFixed(2)+' sn';
+                $('r-quality').textContent=Math.round(clamp(avgPhys-avgRisk*.25,0,100))+'/100';
+                log('Sim raporu: risk '+Math.round(avgRisk)+'/100, fizik '+Math.round(avgPhys)+'%, max sapma '+maxOffset.toFixed(2)+' m','ok');
+                return;
+            }
+            const m=calcFrame(sim,ref,f),mid=simC.height/2,w=simC.width;
+            ro-=Math.max(2,m.sp*.42);drawRoad(ro,mid);
+            if(m.ano){sctx.fillStyle=ac+'13';sctx.fillRect(0,0,simC.width,simC.height)}
+            const sx=w*.18,scale=24,step=24;
+            const refPt={x:sx+f*step,y:mid+(ref.y[f]-ref.y[0])*scale};
+            const simPt={x:sx+f*step,y:mid+(sim.y[f]-ref.y[0])*scale};
+            refTrail.push(refPt);trail.push(simPt);if(trail.length>18){trail.shift();refTrail.shift()}
+            drawPath(refTrail,'rgba(16,185,129,.45)',2,true);
+            drawPath(trail,ac+'cc',3,false);
+            for(let i=0;i<trail.length;i+=3){sctx.fillStyle=ac+Math.round(35+i*9).toString(16);sctx.beginPath();sctx.arc(trail[i].x,trail[i].y,3,0,Math.PI*2);sctx.fill()}
+            const ag=Math.atan2(sim.vy[f],sim.vx[f]+1e-8),rag=Math.atan2(ref.vy[f],ref.vx[f]+1e-8);
+            drawCar(refPt.x,refPt.y,rag,'#10b981',true);
+            drawCar(simPt.x,simPt.y,ag,ac,false);
+            sctx.strokeStyle='rgba(255,255,255,.18)';sctx.lineWidth=1;sctx.setLineDash([4,5]);
+            sctx.beginPath();sctx.moveTo(refPt.x,refPt.y);sctx.lineTo(simPt.x,simPt.y);sctx.stroke();sctx.setLineDash([]);
+            $('s-status').textContent=m.ano?'ANOMALİ':'STABİL';$('s-status').style.color=m.ano?ac:'var(--green)';
+            $('s-speed').textContent=m.sp.toFixed(1);$('s-accel').textContent=m.accel.toFixed(1);$('s-offset').textContent=m.offset.toFixed(2);
+            $('s-risk').textContent=Math.round(m.risk);$('s-risk').style.color=m.risk>70?'var(--red)':m.risk>40?'var(--amber)':'var(--green)';
+            $('s-phys').textContent=Math.round(m.phys);$('s-phys').style.color=m.phys<70?'var(--red)':m.phys<88?'var(--amber)':'var(--green)';
+            frames.push(m);f++;setTimeout(()=>requestAnimationFrame(draw),70);
         })();
     }
 
