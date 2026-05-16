@@ -1,0 +1,42 @@
+INFO:     Started server process [28417]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[✅] CTGAN modülü yüklendi
+[✅] RCGAN GODMODE yüklendi
+
+=======================================================
+🛡️  Sentetik Veri Üretim Hattı — Bilgi Damıtma + Adaptif Üretim
+   RCGAN: GODMODE ✅
+   Pipeline: Damıtma → Sentez → Değerlendirme
+=======================================================
+
+[ℹ️] Yüklenen veride label sütunu bulunamadı, 'label' oluşturuldu.
+INFO:     127.0.0.1:59995 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60115 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:      - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60122 - "GET /api/system_status HTTP/1.1" 200 OK
+/Users/aliturhan/Desktop/otonomproje/backend/server.py:143: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df[label_col] = le.inverse_transform(y)
+[CTGAN] 3496 satır üzerinde eğitim başlıyor...
+[CTGAN] 5060 sentetik örnek üretildi
+INFO:     127.0.0.1:60126 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+[🔧] Bozuk CSV onarıldı: 200 alan → 101 sütun, 1518 satır
+INFO:     127.0.0.1:60314 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+[ℹ️] Zengin veri seti tespit edildi (11 ekstra sütun: ['altitude', 'imu_acc_x', 'imu_acc_y', 'imu_acc_z', 'imu_gyro_x']...)
+[ℹ️] Tüm sütunları korumak için CTGAN'a yönlendiriliyor.
+[CTGAN] 5000 satır üzerinde eğitim başlıyor...
+[CTGAN] 5450 sentetik örnek üretildi
+INFO:     127.0.0.1:60354 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+[ℹ️] Zengin veri seti tespit edildi (11 ekstra sütun: ['altitude', 'imu_acc_x', 'imu_acc_y', 'imu_acc_z', 'imu_gyro_x']...)
+[ℹ️] Tüm sütunları korumak için CTGAN'a yönlendiriliyor.
+[CTGAN] 5000 satır üzerinde eğitim başlıyor...
+[CTGAN] 9970 sentetik örnek üretildi
+INFO:     127.0.0.1:60390 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+[🔧] Bozuk CSV onarıldı: 200 alan → 101 sütun, 1518 satır
+INFO:     127.0.0.1:60445 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51217 - "GET /api/system_status HTTP/1.1" 200 OK

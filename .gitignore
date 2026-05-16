@@ -1,0 +1,6 @@
+otonom_env/
+__pycache__/
+*.pyc
+outputs/
+waymo_seed_MASSIVE.csv
+.DS_Store

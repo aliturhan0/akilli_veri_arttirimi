@@ -1,0 +1,90 @@
+INFO:     Started server process [71527]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+[✅] CTGAN modülü yüklendi
+[✅] RCGAN GODMODE yüklendi
+
+=======================================================
+🛡️  Sentetik Veri Üretim Hattı — Bilgi Damıtma + Adaptif Üretim
+   RCGAN: GODMODE ✅
+   Pipeline: Damıtma → Sentez → Değerlendirme
+=======================================================
+
+INFO:     127.0.0.1:50795 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50795 - "GET /style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50796 - "GET /script.js HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50796 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50795 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50795 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50795 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50802 - "POST /api/evaluate_pipeline HTTP/1.1" 400 Bad Request
+[CTGAN] 5546 satır üzerinde eğitim başlıyor...
+[CTGAN] 1000 sentetik örnek üretildi
+INFO:     127.0.0.1:50803 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51488 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51488 - "GET /style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51489 - "GET /script.js HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51489 - "GET /api/system_status HTTP/1.1" 200 OK
+[CTGAN] 5546 satır üzerinde eğitim başlıyor...
+[CTGAN] 260 sentetik örnek üretildi
+INFO:     127.0.0.1:51490 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+[CTGAN] 1321 satır üzerinde eğitim başlıyor...
+[CTGAN] 1100 sentetik örnek üretildi
+INFO:     127.0.0.1:51536 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51592 - "POST /api/simulation_sample HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51715 - "GET /api/download_generated HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52793 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57384 - "GET /api/system_status HTTP/1.1" 200 OK
+[CTGAN] 1321 satır üzerinde eğitim başlıyor...
+[CTGAN] 4420 sentetik örnek üretildi
+INFO:     127.0.0.1:57405 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57465 - "GET /api/download_generated HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57493 - "OPTIONS /api/simulation_sample HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57494 - "POST /api/simulation_sample HTTP/1.1" 404 Not Found
+[CTGAN] 100 satır üzerinde eğitim başlıyor...
+[CTGAN] 3600 sentetik örnek üretildi
+INFO:     127.0.0.1:57532 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57544 - "GET /api/download_generated HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57593 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57601 - "POST /api/evaluate_pipeline HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57607 - "POST /api/evaluate_pipeline HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57607 - "POST /api/evaluate_pipeline HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57607 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57613 - "POST /api/evaluate_pipeline HTTP/1.1" 400 Bad Request
+[CTGAN] 1321 satır üzerinde eğitim başlıyor...
+[CTGAN] 3950 sentetik örnek üretildi
+INFO:     127.0.0.1:57616 - "POST /api/evaluate_pipeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57678 - "GET /api/download_generated HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57691 - "GET /api/system_status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57692 - "POST /api/evaluate_pipeline HTTP/1.1" 400 Bad Request
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [71527]
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:359: UserWarning: resource_tracker: There appear to be 6 leaked semlock objects to clean up at shutdown
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:359: UserWarning: resource_tracker: There appear to be 10 leaked folder objects to clean up at shutdown
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_7958dfd990eb4a759dc8e1e8d6b96cfd_cb8c6eed3e6b4eeaa3e3d2771db79f7f: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_7958dfd990eb4a759dc8e1e8d6b96cfd_a2030fcac2b4474d85259f1d63c5038d: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_f66e03a948f04689bbdb53bd6c9a880d_6e7e9522ce564ed9b7bd31ec460231f1: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_7958dfd990eb4a759dc8e1e8d6b96cfd_b5ab67cc2d6c4abdba9a116cd8bd2b1e: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_b6c650a2f1164029825be4084c4ec46a_5d3a34fb0fe44df0a82ad719d49653f9: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_7958dfd990eb4a759dc8e1e8d6b96cfd_be01adf0879b4605b2ba6c240384e17f: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_9c36f6804002493aa8d8492ef4ed3d76_101042f24ad64443af3c63d89b533fce: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_7958dfd990eb4a759dc8e1e8d6b96cfd_c07b47ad5c5e4ac4a539a8f635ee9ac1: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_4f75053b74ed42f89af946b38363e74b_ebf5049941e544b0a9ae05191071e452: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
+/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages/joblib/externals/loky/backend/resource_tracker.py:375: UserWarning: resource_tracker: /var/folders/z5/klz8qmm17bz1thmt11dftsg40000gn/T/joblib_memmapping_folder_71527_7958dfd990eb4a759dc8e1e8d6b96cfd_3323e41efec3432fa2c53d26e3a89a6d: FileNotFoundError(2, 'No such file or directory')
+  warnings.warn(f"resource_tracker: {name}: {e!r}")
