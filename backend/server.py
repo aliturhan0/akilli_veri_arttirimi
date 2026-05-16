@@ -275,7 +275,7 @@ def try_convert_to_waymo(df, label_col):
     Dönüşüm: Sıralı satırları 20'şerli pencereler halinde keser,
     eksik kanalları (speed, vx, vy) pozisyon farkından hesaplar.
     """
-    cols_lower = {c: c.lower().strip() for c in df.columns}
+    cols_lower = {c: c.lower().strip().replace(" ", "_").replace("-", "_") for c in df.columns}
     
     # ── 1. Pozisyon sütunlarını bul ──
     x_col, y_col = None, None
@@ -283,14 +283,31 @@ def try_convert_to_waymo(df, label_col):
     
     # Pozisyon aday isimleri (öncelik sırasıyla)
     # ⚠️ SADECE gerçek konum/pozisyon sütunları! İvme (accel), jiroskop (gyro) vs. KONUM DEĞİL!
-    x_candidates = ['pos_x', 'longitude', 'lon', 'lng', 'easting', 'coord_x', 'position_x']
-    y_candidates = ['pos_y', 'latitude', 'lat', 'northing', 'coord_y', 'position_y']
-    speed_candidates = ['speed', 'velocity', 'vel', 'spd']
-    vx_candidates = ['vx', 'vel_x', 'velocity_x', 'v_x']
-    vy_candidates = ['vy', 'vel_y', 'velocity_y', 'v_y']
+    x_candidates = [
+        'x', 'pos_x', 'position_x', 'coord_x', 'coordinate_x', 'center_x', 'centroid_x',
+        'ego_x', 'vehicle_x', 'agent_x', 'object_x', 'track_x', 'map_x', 'local_x',
+        'global_x', 'longitude', 'lon', 'lng', 'easting'
+    ]
+    y_candidates = [
+        'y', 'pos_y', 'position_y', 'coord_y', 'coordinate_y', 'center_y', 'centroid_y',
+        'ego_y', 'vehicle_y', 'agent_y', 'object_y', 'track_y', 'map_y', 'local_y',
+        'global_y', 'latitude', 'lat', 'northing'
+    ]
+    speed_candidates = ['speed', 'speed_mps', 'ego_speed', 'vehicle_speed', 'velocity', 'vel', 'spd']
+    vx_candidates = ['vx', 'vel_x', 'velocity_x', 'v_x', 'ego_vx', 'vehicle_vx', 'agent_vx']
+    vy_candidates = ['vy', 'vel_y', 'velocity_y', 'v_y', 'ego_vy', 'vehicle_vy', 'agent_vy']
+    motion_context = [
+        'time', 'timestamp', 'frame', 'frame_id', 't', 'dt', 'id', 'track_id', 'vehicle_id',
+        'agent_id', 'object_id', 'label', 'class', 'target', 'type', 'heading', 'yaw',
+        'yaw_rate', 'orientation', 'steering', 'steering_angle', 'lane_id', 'lane',
+        'lane_offset', 'throttle', 'brake', 'accel', 'acceleration', 'acceleration_x',
+        'acceleration_y', 'accel_x', 'accel_y', 'ax', 'ay', 'longitudinal_accel',
+        'lateral_accel'
+    ]
+    routing_context = [c for c in motion_context if c not in ['label', 'class', 'target', 'type', 'id']]
     
     # Yörünge ile ilgili tüm sütun isimleri
-    trajectory_keywords = set(x_candidates + y_candidates + speed_candidates + vx_candidates + vy_candidates + ['time', 'timestamp', 't', 'label', 'class', 'target', 'type', 'id'])
+    trajectory_keywords = set(x_candidates + y_candidates + speed_candidates + vx_candidates + vy_candidates + motion_context)
     
     for orig, low in cols_lower.items():
         if not x_col and low in x_candidates: x_col = orig
@@ -302,6 +319,12 @@ def try_convert_to_waymo(df, label_col):
     # En az 2 KONUM sütunu bulamazsak dönüştürme yapılamaz → CTGAN'a düşsün
     if not x_col or not y_col:
         return None
+
+    # Generic x/y kolonlarını ancak hareket bağlamı varsa RCGAN'a al.
+    has_motion_signal = any([speed_col, vx_col, vy_col]) or any(cols_lower[c] in routing_context for c in df.columns)
+    if cols_lower[x_col] in ['x', 'y'] and cols_lower[y_col] in ['x', 'y'] and not has_motion_signal:
+        print("[ℹ️] Generic x/y bulundu ama hız/zaman/araç bağlamı yok; CTGAN'a yönlendiriliyor.")
+        return None
     
     # ── Zengin Veri Seti Kontrolü ──
     # Eğer dosyada konum dışı sütunlar çoğunluktaysa (IMU, sensör, vs.),
@@ -309,8 +332,9 @@ def try_convert_to_waymo(df, label_col):
     non_trajectory_cols = [c for c in df.columns if cols_lower[c] not in trajectory_keywords]
     trajectory_cols_found = [c for c in df.columns if cols_lower[c] in trajectory_keywords]
     
-    if len(non_trajectory_cols) > 3:
-        # Dosyada 3'ten fazla yörünge-dışı sütun var → zengin veri seti
+    rich_limit = max(8, len(trajectory_cols_found) * 2)
+    if len(non_trajectory_cols) > rich_limit:
+        # Dosyada çok fazla yörünge-dışı sütun var → zengin veri seti
         # CTGAN hepsini öğrensin, RCGAN sadece 5 kanal bilir, geri kalanı kaybolur
         print(f"[ℹ️] Zengin veri seti tespit edildi ({len(non_trajectory_cols)} ekstra sütun: {non_trajectory_cols[:5]}...)")
         print(f"[ℹ️] Tüm sütunları korumak için CTGAN'a yönlendiriliyor.")
@@ -322,13 +346,22 @@ def try_convert_to_waymo(df, label_col):
     x_data = pd.to_numeric(df[x_col], errors='coerce').fillna(0).values
     y_data = pd.to_numeric(df[y_col], errors='coerce').fillna(0).values
     
-    # Speed yoksa pozisyon farkından hesapla
+    # Speed yoksa vx/vy veya pozisyon farkından hesapla
     if speed_col:
         speed_data = pd.to_numeric(df[speed_col], errors='coerce').fillna(0).values
+    elif vx_col and vy_col:
+        vx_tmp = pd.to_numeric(df[vx_col], errors='coerce').fillna(0).values
+        vy_tmp = pd.to_numeric(df[vy_col], errors='coerce').fillna(0).values
+        speed_data = np.sqrt(vx_tmp**2 + vy_tmp**2)
     else:
         dx = np.diff(x_data, prepend=x_data[0])
         dy = np.diff(y_data, prepend=y_data[0])
         speed_data = np.sqrt(dx**2 + dy**2)
+
+    movement_span = (np.nanmax(x_data) - np.nanmin(x_data)) + (np.nanmax(y_data) - np.nanmin(y_data))
+    if movement_span < 1e-6:
+        print("[ℹ️] Konum kolonları hareket içermiyor; CTGAN'a yönlendiriliyor.")
+        return None
     
     # vx/vy yoksa pozisyon farkından hesapla
     if vx_col:
